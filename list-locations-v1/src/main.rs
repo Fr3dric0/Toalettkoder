@@ -1,4 +1,11 @@
+mod location;
+mod api_utils;
+
 use lambda_http::{run, service_fn, Body, Error, Request, RequestExt, Response};
+use uuid::Uuid;
+use crate::api_utils::response_ok;
+use crate::location::{Coordinate, Location, Toilet, Wifi};
+
 
 /// This is the main body for the function.
 /// Write your code inside it.
@@ -10,15 +17,23 @@ async fn function_handler(event: Request) -> Result<Response<Body>, Error> {
         .query_string_parameters_ref()
         .and_then(|params| params.first("name"))
         .unwrap_or("world");
-    let message = format!("Hello {who}, this is an AWS Lambda HTTP request");
+
+    let locations = [
+      Location {
+          id: Uuid::new_v4().to_string(),
+          name: "Espresso house Torshov".to_string(),
+          location: Coordinate {
+              lat: 59.9345054,
+              lon: 10.7639602,
+          },
+          toilet: Option::from(Toilet { code: 2023 }),
+          wifi: Option::from(Wifi { code: None, is_open_network: true }),
+      }  
+    ];
 
     // Return something that implements IntoResponse.
     // It will be serialized to the right response event automatically by the runtime
-    let resp = Response::builder()
-        .status(200)
-        .header("content-type", "text/html")
-        .body(message.into())
-        .map_err(Box::new)?;
+    let resp = response_ok(locations)?;
     Ok(resp)
 }
 
