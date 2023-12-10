@@ -1,4 +1,4 @@
-use crate::utils::dynamodb::{as_float, as_string, as_unsigned_int};
+use crate::utils::dynamodb::{as_number, as_string};
 use aws_sdk_dynamodb::types::AttributeValue;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -11,8 +11,8 @@ pub struct Coordinate {
 
 impl From<&HashMap<String, AttributeValue>> for Coordinate {
     fn from(value: &HashMap<String, AttributeValue>) -> Self {
-        let lat = as_float(value.get("lat")).unwrap();
-        let lon = as_float(value.get("lon")).unwrap();
+        let lat = as_number(value.get("lat")).unwrap();
+        let lon = as_number(value.get("lon")).unwrap();
 
         Coordinate { lat, lon }
     }
@@ -25,7 +25,7 @@ pub struct Toilet {
 
 impl From<&HashMap<String, AttributeValue>> for Toilet {
     fn from(value: &HashMap<String, AttributeValue>) -> Self {
-        let code = as_unsigned_int(value.get("code")).unwrap();
+        let code = as_number(value.get("code")).unwrap();
 
         Toilet { code }
     }
@@ -68,14 +68,14 @@ impl From<&HashMap<String, AttributeValue>> for Location {
         let id: String = as_string(value.get("id")).unwrap();
         let name: String = as_string(value.get("name")).unwrap();
 
-        let location = value.get("location").unwrap().as_m().unwrap();
+        let location = value.get("location").and_then(|it| it.as_m().ok()).unwrap();
 
         return Location {
             id,
             name,
             location: location.into(),
             toilet: value.get("toilet").map(|it| it.as_m().unwrap().into()),
-            wifi: None,
+            wifi: value.get("wifi").map(|it| it.as_m().unwrap().into()),
         };
     }
 }

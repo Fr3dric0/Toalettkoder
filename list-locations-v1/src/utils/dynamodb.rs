@@ -1,4 +1,5 @@
 use aws_sdk_dynamodb::types::AttributeValue;
+use std::str::FromStr;
 
 pub fn as_string(value: Option<&AttributeValue>) -> Option<String> {
     if let Some(attribute) = value {
@@ -8,21 +9,12 @@ pub fn as_string(value: Option<&AttributeValue>) -> Option<String> {
     }
 }
 
-pub fn as_float(value: Option<&AttributeValue>) -> Option<f64> {
+pub fn as_number<T: FromStr>(value: Option<&AttributeValue>) -> Option<T> {
     match value {
         Some(attribute) => attribute
             .as_n()
-            .map(|number| str::parse(number).unwrap())
-            .ok(),
-        None => None,
-    }
-}
-
-pub fn as_unsigned_int(value: Option<&AttributeValue>) -> Option<u32> {
-    match value {
-        Some(attribute) => attribute
-            .as_n()
-            .map(|number| str::parse(number).unwrap())
+            .map(|number| str::parse::<T>(number))
+            .unwrap()
             .ok(),
         None => None,
     }

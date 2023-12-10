@@ -79,7 +79,7 @@ export class AppStack extends cdk.Stack {
         metricsEnabled: true,
         // Utilize cache to reduce load on the backend
         cachingEnabled: true,
-        cacheTtl: Duration.minutes(5),
+        cacheTtl: Duration.minutes(60),
         // Heavily rate limit the API to avoid potential for abuse
         throttlingRateLimit: 1,
         throttlingBurstLimit: 2,
