@@ -46,7 +46,7 @@ async fn function_handler(event: Request) -> Result<Response<Body>, Error> {
 async fn main() -> Result<(), Error> {
     tracing_subscriber::fmt()
         .json()
-        .with_max_level(tracing::Level::DEBUG)
+        .with_max_level(tracing::Level::INFO)
         // disable printing the name of the module in every log line.
         .with_target(false)
         // disabling time is handy because CloudWatch will add the ingestion time.

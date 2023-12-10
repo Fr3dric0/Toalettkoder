@@ -1,7 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { FunctionUrlAuthType } from 'aws-cdk-lib/aws-lambda';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { AttributeType, BillingMode, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
@@ -11,6 +10,7 @@ import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
 import { CertificateValidation } from 'aws-cdk-lib/aws-certificatemanager';
 import { HostedZone, IHostedZone } from "aws-cdk-lib/aws-route53";
+import { Duration } from "aws-cdk-lib";
 
 const domainName = 'toalettkoder.prod.lokalvert.tech';
 
@@ -74,6 +74,15 @@ export class AppStack extends cdk.Stack {
         domainName,
         certificate: certificate,
         securityPolicy: SecurityPolicy.TLS_1_2,
+      },
+      deployOptions: {
+        metricsEnabled: true,
+        // Utilize cache to reduce load on the backend
+        cachingEnabled: true,
+        cacheTtl: Duration.minutes(5),
+        // Heavily rate limit the API to avoid potential for abuse
+        throttlingRateLimit: 1,
+        throttlingBurstLimit: 2,
       },
     });
     new route53.ARecord(scope, 'ApiDnsRecord', {
