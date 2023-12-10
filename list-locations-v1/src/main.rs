@@ -1,55 +1,38 @@
-mod location;
 mod api_utils;
+mod domain;
+mod utils;
 
-use lambda_http::{run, service_fn, Body, Error, Request, RequestExt, Response};
-use uuid::Uuid;
 use crate::api_utils::response_ok;
-use crate::location::{Coordinate, Location, Toilet, Wifi};
+use crate::domain::dynamodb_location_repository::DynamoDbLocationRepository;
+use crate::domain::location_repository::LocationRepository;
+use aws_config::meta::region::RegionProviderChain;
+use aws_config::BehaviorVersion;
+use lambda_http::{run, service_fn, Body, Error, Request, RequestExt, Response};
+use std::env;
 
+async fn init_dynamodb() -> aws_sdk_dynamodb::Client {
+    let region_provider = RegionProviderChain::default_provider().or_else("us-east-1");
+    let config = aws_config::defaults(BehaviorVersion::latest())
+        .region(region_provider)
+        .load()
+        .await;
+    return aws_sdk_dynamodb::Client::new(&config);
+}
 
 /// This is the main body for the function.
 /// Write your code inside it.
 /// There are some code example in the following URLs:
 /// - https://github.com/awslabs/aws-lambda-rust-runtime/tree/main/examples
 async fn function_handler(event: Request) -> Result<Response<Body>, Error> {
-    // Extract some useful information from the request
-    let who = event
-        .query_string_parameters_ref()
-        .and_then(|params| params.first("name"))
-        .unwrap_or("world");
+    let dynamodb_client = init_dynamodb().await;
+    let location_repository = DynamoDbLocationRepository {
+        dynamodb_client,
+        table_name: env::var("LOCATIONS_TABLE_NAME").unwrap().to_string(),
+    };
+
     tracing::info!("Retrieving list of locations...");
-    let locations = [
-      Location {
-          id: Uuid::new_v4().to_string(),
-          name: "Espresso house Torshov".to_string(),
-          location: Coordinate {
-              lat: 59.9345054,
-              lon: 10.7639602,
-          },
-          toilet: Option::from(Toilet { code: 2023 }),
-          wifi: Option::from(Wifi { code: None, is_open_network: true }),
-      },
-      Location {
-          id: Uuid::new_v4().to_string(),
-          name: "Baker hansen Torshov".to_string(),
-          location: Coordinate {
-              lat: 59.9345054,
-              lon: 10.7639602,
-          },
-          toilet: Option::from(Toilet { code: 4321 }),
-          wifi: Option::from(Wifi { code: Some("Kanelbolle".to_string()), is_open_network: false }),
-      },
-      Location {
-          id: Uuid::new_v4().to_string(),
-          name: "Espresso house Majorstua".to_string(),
-          location: Coordinate {
-              lat: 59.9345054,
-              lon: 10.7639602,
-          },
-          toilet: Option::from(Toilet { code: 4578 }),
-          wifi: Option::from(Wifi { code: None, is_open_network: true }),
-      },
-    ];
+
+    let locations = location_repository.list_all().await?;
     let locations_formatted = serde_json::to_string(&locations).unwrap();
     tracing::info!({ %locations_formatted }, "Locations retrieved!");
 
@@ -63,7 +46,7 @@ async fn function_handler(event: Request) -> Result<Response<Body>, Error> {
 async fn main() -> Result<(), Error> {
     tracing_subscriber::fmt()
         .json()
-        .with_max_level(tracing::Level::INFO)
+        .with_max_level(tracing::Level::DEBUG)
         // disable printing the name of the module in every log line.
         .with_target(false)
         // disabling time is handy because CloudWatch will add the ingestion time.
